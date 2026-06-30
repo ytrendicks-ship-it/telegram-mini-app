@@ -129,24 +129,28 @@
     }
 }
 
-const API_URL = 'http://localhost:8080/sync';  // Для теста на ПК
-// const API_URL = 'http://ТВОЙ_IP:8080/sync';  // Для сервера
+const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:8080/sync' 
+    : 'http://109.71.241.185:8080/sync';
 
 async function syncBalanceAPI() {
     const user = tg.initDataUnsafe?.user;
     if (!user?.id) return;
     
     try {
-        await fetch(API_URL, {
+        const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: user.id, balance: balance })
         });
-    } catch(e) {}
+        console.log('Sync:', await response.text());
+    } catch(e) {
+        console.log('Sync error:', e);
+    }
 }
 
 function sendResult(w) {
-    syncBalanceAPI();  // Не закрывает Mini App!
+    syncBalanceAPI();
 }
         
         const mults = {
