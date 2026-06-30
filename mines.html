@@ -61,7 +61,7 @@
     <div class="container">
         <div class="header">
             <div class="title">💣 Mines</div>
-            <div class="balance-badge">⭐ <span id="balance">1000</span></div>
+            <div class="balance-badge">⭐ <span id="balance">...</span></div>
         </div>
         <div class="card">
             <div class="grid" id="grid"></div>
@@ -90,9 +90,50 @@
         </div>
     </div>
     <script>
-        const tg = window.Telegram.WebApp; tg.expand(); tg.ready();
-        let balance = 1000, bet = 100, mines = 3;
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+        
+        // Читаем баланс из URL параметра (передается из бота)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlBalance = parseInt(urlParams.get('balance'));
+        
+        // Загружаем сохраненный баланс или из URL или 1000
+        let balance = 1000;
+        
+        if (urlBalance && !isNaN(urlBalance) && urlBalance >= 0) {
+            balance = urlBalance;
+            localStorage.setItem('mines_balance', balance.toString());
+        } else {
+            const saved = localStorage.getItem('mines_balance');
+            if (saved) balance = parseInt(saved);
+        }
+        
+        let bet = 100, mines = 3;
         let gameActive = false, canCashout = false, grid = [], revealed = [], opened = 0, multiplier = 1;
+        
+        // Показываем баланс
+        document.getElementById('balance').textContent = balance;
+        if (bet > balance) { bet = balance; document.getElementById('bet').value = bet; }
+        
+        // Запрашиваем баланс у бота для синхронизации
+        tg.sendData(JSON.stringify({ action: "get_balance" }));
+        
+        function saveBalance() {
+            localStorage.setItem('mines_balance', balance.toString());
+            document.getElementById('balance').textContent = balance;
+        }
+        
+        function sendResult(winAmount) {
+            tg.sendData(JSON.stringify({
+                action: "game_result",
+                game: "mines",
+                win: winAmount,
+                balance: balance,
+                bet: bet,
+                mines: mines
+            }));
+        }
         
         const mults = {
             1:[1.02,1.05,1.10,1.16,1.23,1.31,1.40,1.50,1.62,1.75,1.90,2.07,2.27,2.50,2.77,3.10,3.50,4.00,4.65,5.50,6.60,8.10,10.20,13.50],
@@ -150,8 +191,8 @@
 
         function startGame() {
             bet = parseInt(document.getElementById('bet').value)||100;
-            if(bet>balance){alert('Недостаточно!');return;}
-            balance-=bet;
+            if(bet>balance){alert('Недостаточно средств!');return;}
+            balance-=bet; saveBalance();
             gameActive=true; opened=0; multiplier=1; canCashout=false;
             lockControls(true);
             initGrid(); renderGrid(); updateUI();
@@ -166,23 +207,25 @@
             if(!gameActive||revealed[i]) return;
             revealed[i]=true;
             
-            // Разрешаем кэшаут после первого нажатия
             if (!canCashout) { canCashout=true; document.getElementById('cashoutBtn').disabled=false; }
             
             if(grid[i]) {
                 endGame();
                 document.getElementById('message').textContent='💥 Взрыв! -'+bet+' ⭐';
                 document.getElementById('message').className='message lose';
+                sendResult(-bet);
                 return;
             }
             opened++;
             let mList=getMults(mines);
             multiplier=mList[Math.min(opened-1,mList.length-1)];
             if(opened>=25-mines){
-                balance+=Math.floor(bet*multiplier);
+                let win=Math.floor(bet*multiplier);
+                balance+=win; saveBalance();
                 endGame();
-                document.getElementById('message').textContent='🎉 Все алмазы! +'+Math.floor(bet*multiplier)+' ⭐';
+                document.getElementById('message').textContent='🎉 Все алмазы! +'+win+' ⭐';
                 document.getElementById('message').className='message win';
+                sendResult(win);
                 return;
             }
             renderGrid(); updateUI();
@@ -191,10 +234,11 @@
         function cashOut() {
             if(!gameActive||!canCashout) return;
             let win=Math.floor(bet*multiplier);
-            balance+=win;
+            balance+=win; saveBalance();
             endGame();
             document.getElementById('message').textContent='🎉 Выигрыш: +'+win+' ⭐';
             document.getElementById('message').className='message win';
+            sendResult(win);
         }
 
         function endGame() {
@@ -207,7 +251,7 @@
         }
 
         function updateUI() {
-            document.getElementById('balance').textContent=balance;
+            saveBalance();
             document.getElementById('mult').textContent=multiplier.toFixed(2)+'x';
             document.getElementById('opened').textContent=opened;
             document.getElementById('win').textContent=Math.floor(bet*multiplier)+' ⭐';
