@@ -94,45 +94,31 @@
         tg.expand();
         tg.ready();
         
-        // Читаем баланс из URL параметра (передается из бота)
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlBalance = parseInt(urlParams.get('balance'));
+        // Берем баланс из URL. Если нет - 1000
+        const p = new URLSearchParams(location.search);
+        const urlBal = parseInt(p.get('balance'));
         
-        // Загружаем сохраненный баланс или из URL или 1000
-        let balance = 1000;
+        // ВСЕГДА берем из URL если он есть, иначе localStorage, иначе 1000
+        let balance = (!isNaN(urlBal) && urlBal >= 0) ? urlBal 
+                    : (parseInt(localStorage.getItem('mines_balance')) || 1000);
         
-        if (urlBalance && !isNaN(urlBalance) && urlBalance >= 0) {
-            balance = urlBalance;
-            localStorage.setItem('mines_balance', balance.toString());
-        } else {
-            const saved = localStorage.getItem('mines_balance');
-            if (saved) balance = parseInt(saved);
-        }
+        // Сохраняем
+        localStorage.setItem('mines_balance', balance.toString());
         
         let bet = 100, mines = 3;
         let gameActive = false, canCashout = false, grid = [], revealed = [], opened = 0, multiplier = 1;
         
-        // Показываем баланс
+        // Показываем
         document.getElementById('balance').textContent = balance;
         if (bet > balance) { bet = balance; document.getElementById('bet').value = bet; }
         
-        // Запрашиваем баланс у бота для синхронизации
-        tg.sendData(JSON.stringify({ action: "get_balance" }));
-        
-        function saveBalance() {
+        function saveBal() {
             localStorage.setItem('mines_balance', balance.toString());
             document.getElementById('balance').textContent = balance;
         }
         
-        function sendResult(winAmount) {
-            tg.sendData(JSON.stringify({
-                action: "game_result",
-                game: "mines",
-                win: winAmount,
-                balance: balance,
-                bet: bet,
-                mines: mines
-            }));
+        function sendResult(w) {
+            tg.sendData(JSON.stringify({ action: "game_result", game: "mines", win: w, balance: balance, bet: bet, mines: mines }));
         }
         
         const mults = {
@@ -145,119 +131,51 @@
             24:[5.00,10.00,25.00,100.00,500.00]
         };
         
-        function getMults(m) {
-            if (mults[m]) return mults[m];
-            let arr = [1.05];
-            for (let i=1;i<25-m;i++) arr.push(parseFloat((arr[i-1]*1.15).toFixed(2)));
-            return arr;
-        }
+        function getM(m) { return mults[m] || (a=>{let r=[1.05];for(let i=1;i<25-m;i++)r.push(+(r[i-1]*1.15).toFixed(2));return r;})(m); }
+        function lock(l) { ['bet','minesInput','btnHalf','btnDouble'].forEach(id=>document.getElementById(id).disabled=l); document.querySelectorAll('.chip').forEach(c=>c.disabled=l); }
+        function setMines(n) { if(gameActive||n<1||n>24)return; mines=n; document.getElementById('minesInput').value=n; document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',parseInt(c.textContent)===n)); initGrid();renderGrid(); }
+        function adjustBet(f) { if(gameActive)return; bet=Math.max(10,Math.min(balance,Math.floor(bet*f))); document.getElementById('bet').value=bet; }
+        function initGrid() { grid=Array(25).fill(false);revealed=Array(25).fill(false);let i=0;while(i<mines){let p=Math.floor(Math.random()*25);if(!grid[p]){grid[p]=true;i++;}} }
+        function renderGrid() { document.getElementById('grid').innerHTML=grid.map((b,i)=>`<div class="cell ${revealed[i]?(b?'bomb':'gem'):''}" onclick="clickCell(${i})">${revealed[i]?(b?'💣':'💎'):''}</div>`).join(''); }
         
-        function lockControls(lock) {
-            document.getElementById('bet').disabled = lock;
-            document.getElementById('minesInput').disabled = lock;
-            document.getElementById('btnHalf').disabled = lock;
-            document.getElementById('btnDouble').disabled = lock;
-            document.querySelectorAll('.chip').forEach(c => c.disabled = lock);
-        }
-
-        function setMines(n) {
-            if (gameActive) return;
-            if (n<1) n=1; if (n>24) n=24;
-            mines = n;
-            document.getElementById('minesInput').value = n;
-            document.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.chip').forEach(c => { if(parseInt(c.textContent)===n) c.classList.add('active'); });
-            initGrid(); renderGrid();
-        }
-
-        function adjustBet(f) {
-            if (gameActive) return;
-            bet = Math.floor(bet*f);
-            if (bet<10) bet=10; if (bet>balance) bet=balance;
-            document.getElementById('bet').value = bet;
-        }
-
-        function initGrid() {
-            grid=Array(25).fill(false); revealed=Array(25).fill(false);
-            let placed=0;
-            while(placed<mines){ let p=Math.floor(Math.random()*25); if(!grid[p]){grid[p]=true;placed++;} }
-        }
-
-        function renderGrid() {
-            document.getElementById('grid').innerHTML = grid.map((isBomb,i) => 
-                `<div class="cell ${revealed[i]?(isBomb?'bomb':'gem'):''}" onclick="clickCell(${i})">${revealed[i]?(isBomb?'💣':'💎'):''}</div>`
-            ).join('');
-        }
-
         function startGame() {
-            bet = parseInt(document.getElementById('bet').value)||100;
-            if(bet>balance){alert('Недостаточно средств!');return;}
-            balance-=bet; saveBalance();
-            gameActive=true; opened=0; multiplier=1; canCashout=false;
-            lockControls(true);
-            initGrid(); renderGrid(); updateUI();
+            bet=parseInt(document.getElementById('bet').value)||100;
+            if(bet>balance){alert('Недостаточно!');return;}
+            balance-=bet;saveBal();gameActive=true;opened=0;multiplier=1;canCashout=false;
+            lock(true);initGrid();renderGrid();updateUI();
             document.getElementById('playBtn').classList.add('hidden');
             document.getElementById('cashoutBtn').classList.remove('hidden');
-            document.getElementById('cashoutBtn').disabled = true;
+            document.getElementById('cashoutBtn').disabled=true;
             document.getElementById('message').textContent='';
-            document.getElementById('message').className='message';
         }
-
+        
         function clickCell(i) {
-            if(!gameActive||revealed[i]) return;
+            if(!gameActive||revealed[i])return;
             revealed[i]=true;
-            
-            if (!canCashout) { canCashout=true; document.getElementById('cashoutBtn').disabled=false; }
-            
-            if(grid[i]) {
-                endGame();
-                document.getElementById('message').textContent='💥 Взрыв! -'+bet+' ⭐';
-                document.getElementById('message').className='message lose';
-                sendResult(-bet);
-                return;
-            }
-            opened++;
-            let mList=getMults(mines);
-            multiplier=mList[Math.min(opened-1,mList.length-1)];
-            if(opened>=25-mines){
-                let win=Math.floor(bet*multiplier);
-                balance+=win; saveBalance();
-                endGame();
-                document.getElementById('message').textContent='🎉 Все алмазы! +'+win+' ⭐';
-                document.getElementById('message').className='message win';
-                sendResult(win);
-                return;
-            }
-            renderGrid(); updateUI();
+            if(!canCashout){canCashout=true;document.getElementById('cashoutBtn').disabled=false;}
+            if(grid[i]){endGame();document.getElementById('message').textContent='💥 Взрыв! -'+bet+' ⭐';sendResult(-bet);return;}
+            opened++;multiplier=getM(mines)[Math.min(opened-1,getM(mines).length-1)];
+            if(opened>=25-mines){let w=Math.floor(bet*multiplier);balance+=w;saveBal();endGame();document.getElementById('message').textContent='🎉 Все! +'+w+' ⭐';sendResult(w);return;}
+            renderGrid();updateUI();
         }
-
+        
         function cashOut() {
-            if(!gameActive||!canCashout) return;
-            let win=Math.floor(bet*multiplier);
-            balance+=win; saveBalance();
-            endGame();
-            document.getElementById('message').textContent='🎉 Выигрыш: +'+win+' ⭐';
-            document.getElementById('message').className='message win';
-            sendResult(win);
+            if(!gameActive||!canCashout)return;
+            let w=Math.floor(bet*multiplier);balance+=w;saveBal();endGame();
+            document.getElementById('message').textContent='🎉 +'+w+' ⭐';sendResult(w);
         }
-
+        
         function endGame() {
-            gameActive=false; canCashout=false;
-            for(let i=0;i<25;i++) if(grid[i]) revealed[i]=true;
-            lockControls(false);
-            renderGrid(); updateUI();
+            gameActive=false;canCashout=false;
+            for(let i=0;i<25;i++)if(grid[i])revealed[i]=true;
+            lock(false);renderGrid();updateUI();
             document.getElementById('playBtn').classList.remove('hidden');
             document.getElementById('cashoutBtn').classList.add('hidden');
         }
-
-        function updateUI() {
-            saveBalance();
-            document.getElementById('mult').textContent=multiplier.toFixed(2)+'x';
-            document.getElementById('opened').textContent=opened;
-            document.getElementById('win').textContent=Math.floor(bet*multiplier)+' ⭐';
-        }
-
-        initGrid(); renderGrid();
+        
+        function updateUI() { saveBal(); document.getElementById('mult').textContent=multiplier.toFixed(2)+'x'; document.getElementById('opened').textContent=opened; document.getElementById('win').textContent=Math.floor(bet*multiplier)+' ⭐'; }
+        
+        initGrid();renderGrid();
     </script>
 </body>
 </html>
