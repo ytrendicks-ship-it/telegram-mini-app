@@ -94,28 +94,20 @@
         tg.expand();
         tg.ready();
         
-        // Берем баланс из URL. Если нет - 1000
+        // Берем баланс из URL
         const p = new URLSearchParams(location.search);
         const urlBal = parseInt(p.get('balance'));
         
-        // ВСЕГДА берем из URL если он есть, иначе localStorage, иначе 1000
-        let balance = (!isNaN(urlBal) && urlBal >= 0) ? urlBal 
-                    : (parseInt(localStorage.getItem('mines_balance')) || 1000);
-        
-        // Сохраняем
-        localStorage.setItem('mines_balance', balance.toString());
+        // Всегда из URL если передан, иначе 1000
+        let balance = (!isNaN(urlBal) && urlBal >= 0) ? urlBal : 1000;
         
         let bet = 100, mines = 3;
         let gameActive = false, canCashout = false, grid = [], revealed = [], opened = 0, multiplier = 1;
         
-        // Показываем
         document.getElementById('balance').textContent = balance;
         if (bet > balance) { bet = balance; document.getElementById('bet').value = bet; }
         
-        function saveBal() {
-            localStorage.setItem('mines_balance', balance.toString());
-            document.getElementById('balance').textContent = balance;
-        }
+        function saveBal() { document.getElementById('balance').textContent = balance; }
         
         function sendResult(w) {
             tg.sendData(JSON.stringify({ action: "game_result", game: "mines", win: w, balance: balance, bet: bet, mines: mines }));
@@ -123,15 +115,13 @@
         
         const mults = {
             1:[1.02,1.05,1.10,1.16,1.23,1.31,1.40,1.50,1.62,1.75,1.90,2.07,2.27,2.50,2.77,3.10,3.50,4.00,4.65,5.50,6.60,8.10,10.20,13.50],
-            2:[1.05,1.12,1.22,1.35,1.50,1.68,1.90,2.16,2.48,2.87,3.35,3.96,4.75,5.80,7.20,9.15,12.00,16.50,24.00,38.00],
             3:[1.08,1.20,1.36,1.55,1.79,2.08,2.44,2.90,3.48,4.23,5.22,6.55,8.40,11.00,14.80,20.50,29.50,45.00],
             5:[1.15,1.35,1.62,1.98,2.45,3.10,4.00,5.25,7.10,9.90,14.30,21.50,34.00,58.00],
-            8:[1.25,1.58,2.05,2.75,3.80,5.40,8.00,12.30,19.80,33.50,61.00],
             10:[1.35,1.80,2.50,3.60,5.40,8.50,14.00,24.50,46.00,95.00],
             24:[5.00,10.00,25.00,100.00,500.00]
         };
         
-        function getM(m) { return mults[m] || (a=>{let r=[1.05];for(let i=1;i<25-m;i++)r.push(+(r[i-1]*1.15).toFixed(2));return r;})(m); }
+        function getM(m) { return mults[m] || [1.05]; }
         function lock(l) { ['bet','minesInput','btnHalf','btnDouble'].forEach(id=>document.getElementById(id).disabled=l); document.querySelectorAll('.chip').forEach(c=>c.disabled=l); }
         function setMines(n) { if(gameActive||n<1||n>24)return; mines=n; document.getElementById('minesInput').value=n; document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',parseInt(c.textContent)===n)); initGrid();renderGrid(); }
         function adjustBet(f) { if(gameActive)return; bet=Math.max(10,Math.min(balance,Math.floor(bet*f))); document.getElementById('bet').value=bet; }
@@ -146,7 +136,6 @@
             document.getElementById('playBtn').classList.add('hidden');
             document.getElementById('cashoutBtn').classList.remove('hidden');
             document.getElementById('cashoutBtn').disabled=true;
-            document.getElementById('message').textContent='';
         }
         
         function clickCell(i) {
