@@ -195,12 +195,13 @@
             if (!canCashout) { canCashout = true; document.getElementById('cashoutBtn').disabled = false; }
             
             if (grid[i]) {
-                endGame();
-                document.getElementById('message').textContent = '💥 Взрыв! -' + bet + ' ⭐';
-                document.getElementById('message').className = 'message lose';
-                sendResult(-bet);
-                return;
-            }
+    endGame();
+    document.getElementById('message').textContent = '💥 Взрыв! -' + bet + ' ⭐';
+    document.getElementById('message').className = 'message lose';
+    alert('Отправка проигрыша...'); // ← ДОБАВЬ ЭТО
+    sendResult(-bet);
+    return;
+}
             
             opened++;
             var mList = getMults(mines);
@@ -220,14 +221,15 @@
         }
 
         function cashOut() {
-            if (!gameActive || !canCashout) return;
-            var win = Math.floor(bet * multiplier);
-            balance += win; saveBal();
-            endGame();
-            document.getElementById('message').textContent = '🎉 Выигрыш: +' + win + ' ⭐';
-            document.getElementById('message').className = 'message win';
-            sendResult(win);
-        }
+    if (!gameActive || !canCashout) return;
+    var win = Math.floor(bet * multiplier);
+    balance += win; saveBal();
+    endGame();
+    document.getElementById('message').textContent = '🎉 Выигрыш: +' + win + ' ⭐';
+    document.getElementById('message').className = 'message win';
+    alert('Отправка результата...'); // ← ДОБАВЬ ЭТО
+    sendResult(win);
+}
 
         function endGame() {
             gameActive = false; canCashout = false;
