@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mines</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg: #0a0a14; --card: #12121f; --cell: #1a1a30;
+            --green: #00e676; --red: #ff1744; --gold: #ffd740; --purple: #7c4dff;
+            --text: #e0e0e0; --sub: #888;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg); color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px; min-height: 100vh; display: flex; justify-content: center;
+            -webkit-tap-highlight-color: transparent; user-select: none;
+        }
+        .container { max-width: 400px; width: 100%; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .title { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, var(--gold), #ff9100); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .balance-badge { background: var(--card); border: 1px solid rgba(255,255,255,0.1); padding: 10px 18px; border-radius: 25px; font-size: 15px; font-weight: 600; color: var(--green); }
+        .card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 20px; margin-bottom: 12px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 15px; }
+        .cell { aspect-ratio: 1; background: var(--cell); border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; transition: all 0.15s; border: 2px solid transparent; }
+        .cell:active { transform: scale(0.92); }
+        .cell.gem { background: rgba(0,230,118,0.15); border-color: var(--green); animation: pop 0.3s; }
+        .cell.bomb { background: rgba(255,23,68,0.2); border-color: var(--red); animation: shake 0.5s; }
+        @keyframes pop { 0%{transform:scale(1.2)}100%{transform:scale(1)} }
+        @keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)} }
+        .stats { display: flex; justify-content: space-between; margin: 12px 0; }
+        .stat { text-align: center; }
+        .stat-label { font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 15px; font-weight: 700; }
+        .stat-value.gold { color: var(--gold); } .stat-value.green { color: var(--green); }
+        .section-label { font-size: 12px; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+        input { padding: 12px; background: var(--cell); border: 2px solid rgba(255,255,255,0.08); border-radius: 12px; color: #fff; font-size: 15px; font-weight: 600; text-align: center; outline: none; width: 100%; transition: 0.2s; }
+        input:focus { border-color: var(--purple); }
+        input:disabled { opacity: 0.5; cursor: not-allowed; }
+        .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .chip { padding: 8px 14px; border: 2px solid rgba(255,255,255,0.1); border-radius: 20px; background: transparent; color: var(--sub); font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .chip.active { border-color: var(--purple); background: rgba(124,77,255,0.2); color: #fff; }
+        .chip:disabled { opacity: 0.4; cursor: not-allowed; }
+        .play-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 8px; }
+        .play-btn.start { background: linear-gradient(135deg, var(--green), #00c853); color: #000; }
+        .play-btn.cashout { background: linear-gradient(135deg, var(--gold), #ff9100); color: #000; animation: pulse 1.5s infinite; }
+        .play-btn.cashout:disabled { background: #555; color: #999; animation: none; cursor: not-allowed; }
+        @keyframes pulse { 0%,100%{box-shadow:0 4px 15px rgba(255,215,64,0.3)} 50%{box-shadow:0 4px 25px rgba(255,215,64,0.6)} }
+        .hidden { display: none !important; }
+        .message { text-align: center; font-size: 17px; font-weight: 700; margin: 10px 0; min-height: 24px; }
+        .message.win { color: var(--green); } .message.lose { color: var(--red); }
+        .btn { padding: 10px 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 700; }
+        .btn-half { background: rgba(255,255,255,0.08); color: #fff; }
+        .btn-double { background: var(--purple); color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">💣 Mines</div>
+            <div class="balance-badge">⭐ <span id="balance">1000</span></div>
+        </div>
+        <div class="card">
+            <div class="grid" id="grid"></div>
+            <div class="stats">
+                <div class="stat"><div class="stat-label">Множитель</div><div class="stat-value gold" id="mult">1.00x</div></div>
+                <div class="stat"><div class="stat-label">Алмазов</div><div class="stat-value" id="opened">0</div></div>
+                <div class="stat"><div class="stat-label">Выигрыш</div><div class="stat-value green" id="win">0 ⭐</div></div>
+            </div>
+            <div class="message" id="message"></div>
+            <div class="section-label">💵 Сумма ставки</div>
+            <div class="row">
+                <input type="number" id="bet" value="100" min="10">
+                <button class="btn btn-half" id="btnHalf" onclick="adjustBet(0.5)">½</button>
+                <button class="btn btn-double" id="btnDouble" onclick="adjustBet(2)">2×</button>
+            </div>
+            <div class="section-label">💣 Количество мин</div>
+            <input type="number" id="minesInput" value="3" min="1" max="24" onchange="setMines(parseInt(this.value)||3)">
+            <div class="chip-row">
+                <button class="chip active" onclick="setMines(3)">3 💣</button>
+                <button class="chip" onclick="setMines(5)">5 💣</button>
+                <button class="chip" onclick="setMines(10)">10 💣</button>
+                <button class="chip" onclick="setMines(24)">24 💣</button>
+            </div>
+            <button class="play-btn start" id="playBtn" onclick="startGame()">🎮 Играть</button>
+            <button class="play-btn cashout hidden" id="cashoutBtn" onclick="cashOut()" disabled>💰 Забрать</button>
+        </div>
+    </div>
+    <script>
+        const tg = window.Telegram.WebApp; tg.expand(); tg.ready();
+        let balance = 1000, bet = 100, mines = 3;
+        let gameActive = false, canCashout = false, grid = [], revealed = [], opened = 0, multiplier = 1;
+        
+        const mults = {
+            1:[1.02,1.05,1.10,1.16,1.23,1.31,1.40,1.50,1.62,1.75,1.90,2.07,2.27,2.50,2.77,3.10,3.50,4.00,4.65,5.50,6.60,8.10,10.20,13.50],
+            2:[1.05,1.12,1.22,1.35,1.50,1.68,1.90,2.16,2.48,2.87,3.35,3.96,4.75,5.80,7.20,9.15,12.00,16.50,24.00,38.00],
+            3:[1.08,1.20,1.36,1.55,1.79,2.08,2.44,2.90,3.48,4.23,5.22,6.55,8.40,11.00,14.80,20.50,29.50,45.00],
+            5:[1.15,1.35,1.62,1.98,2.45,3.10,4.00,5.25,7.10,9.90,14.30,21.50,34.00,58.00],
+            8:[1.25,1.58,2.05,2.75,3.80,5.40,8.00,12.30,19.80,33.50,61.00],
+            10:[1.35,1.80,2.50,3.60,5.40,8.50,14.00,24.50,46.00,95.00],
+            24:[5.00,10.00,25.00,100.00,500.00]
+        };
+        
+        function getMults(m) {
+            if (mults[m]) return mults[m];
+            let arr = [1.05];
+            for (let i=1;i<25-m;i++) arr.push(parseFloat((arr[i-1]*1.15).toFixed(2)));
+            return arr;
+        }
+        
+        function lockControls(lock) {
+            document.getElementById('bet').disabled = lock;
+            document.getElementById('minesInput').disabled = lock;
+            document.getElementById('btnHalf').disabled = lock;
+            document.getElementById('btnDouble').disabled = lock;
+            document.querySelectorAll('.chip').forEach(c => c.disabled = lock);
+        }
+
+        function setMines(n) {
+            if (gameActive) return;
+            if (n<1) n=1; if (n>24) n=24;
+            mines = n;
+            document.getElementById('minesInput').value = n;
+            document.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.chip').forEach(c => { if(parseInt(c.textContent)===n) c.classList.add('active'); });
+            initGrid(); renderGrid();
+        }
+
+        function adjustBet(f) {
+            if (gameActive) return;
+            bet = Math.floor(bet*f);
+            if (bet<10) bet=10; if (bet>balance) bet=balance;
+            document.getElementById('bet').value = bet;
+        }
+
+        function initGrid() {
+            grid=Array(25).fill(false); revealed=Array(25).fill(false);
+            let placed=0;
+            while(placed<mines){ let p=Math.floor(Math.random()*25); if(!grid[p]){grid[p]=true;placed++;} }
+        }
+
+        function renderGrid() {
+            document.getElementById('grid').innerHTML = grid.map((isBomb,i) => 
+                `<div class="cell ${revealed[i]?(isBomb?'bomb':'gem'):''}" onclick="clickCell(${i})">${revealed[i]?(isBomb?'💣':'💎'):''}</div>`
+            ).join('');
+        }
+
+        function startGame() {
+            bet = parseInt(document.getElementById('bet').value)||100;
+            if(bet>balance){alert('Недостаточно!');return;}
+            balance-=bet;
+            gameActive=true; opened=0; multiplier=1; canCashout=false;
+            lockControls(true);
+            initGrid(); renderGrid(); updateUI();
+            document.getElementById('playBtn').classList.add('hidden');
+            document.getElementById('cashoutBtn').classList.remove('hidden');
+            document.getElementById('cashoutBtn').disabled = true;
+            document.getElementById('message').textContent='';
+            document.getElementById('message').className='message';
+        }
+
+        function clickCell(i) {
+            if(!gameActive||revealed[i]) return;
+            revealed[i]=true;
+            
+            // Разрешаем кэшаут после первого нажатия
+            if (!canCashout) { canCashout=true; document.getElementById('cashoutBtn').disabled=false; }
+            
+            if(grid[i]) {
+                endGame();
+                document.getElementById('message').textContent='💥 Взрыв! -'+bet+' ⭐';
+                document.getElementById('message').className='message lose';
+                return;
+            }
+            opened++;
+            let mList=getMults(mines);
+            multiplier=mList[Math.min(opened-1,mList.length-1)];
+            if(opened>=25-mines){
+                balance+=Math.floor(bet*multiplier);
+                endGame();
+                document.getElementById('message').textContent='🎉 Все алмазы! +'+Math.floor(bet*multiplier)+' ⭐';
+                document.getElementById('message').className='message win';
+                return;
+            }
+            renderGrid(); updateUI();
+        }
+
+        function cashOut() {
+            if(!gameActive||!canCashout) return;
+            let win=Math.floor(bet*multiplier);
+            balance+=win;
+            endGame();
+            document.getElementById('message').textContent='🎉 Выигрыш: +'+win+' ⭐';
+            document.getElementById('message').className='message win';
+        }
+
+        function endGame() {
+            gameActive=false; canCashout=false;
+            for(let i=0;i<25;i++) if(grid[i]) revealed[i]=true;
+            lockControls(false);
+            renderGrid(); updateUI();
+            document.getElementById('playBtn').classList.remove('hidden');
+            document.getElementById('cashoutBtn').classList.add('hidden');
+        }
+
+        function updateUI() {
+            document.getElementById('balance').textContent=balance;
+            document.getElementById('mult').textContent=multiplier.toFixed(2)+'x';
+            document.getElementById('opened').textContent=opened;
+            document.getElementById('win').textContent=Math.floor(bet*multiplier)+' ⭐';
+        }
+
+        initGrid(); renderGrid();
+    </script>
+</body>
+</html>
