@@ -6,75 +6,58 @@
     <title>Mines</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --bg: #0a0a14; --card: #12121f; --cell: #1a1a30;
-            --green: #00e676; --red: #ff1744; --gold: #ffd740; --purple: #7c4dff;
-            --text: #e0e0e0; --sub: #888;
-        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: var(--bg); color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            padding: 20px; min-height: 100vh; display: flex; justify-content: center;
-            -webkit-tap-highlight-color: transparent; user-select: none;
-        }
-        .container { max-width: 400px; width: 100%; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .title { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, var(--gold), #ff9100); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .balance-badge { background: var(--card); border: 1px solid rgba(255,255,255,0.1); padding: 10px 18px; border-radius: 25px; font-size: 15px; font-weight: 600; color: var(--green); }
-        .card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 20px; }
+        body { background: #0a0a14; color: #e0e0e0; font-family: sans-serif; padding: 20px; }
+        .container { max-width: 400px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .title { font-size: 22px; font-weight: 800; color: #ffd740; }
+        .balance { background: #12121f; padding: 10px 18px; border-radius: 25px; color: #00e676; }
+        .card { background: #12121f; border-radius: 20px; padding: 20px; }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 15px; }
-        .cell { aspect-ratio: 1; background: var(--cell); border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; transition: all 0.15s; border: 2px solid transparent; }
-        .cell:active { transform: scale(0.92); }
-        .cell.gem { background: rgba(0,230,118,0.15); border-color: var(--green); animation: pop 0.3s; }
-        .cell.bomb { background: rgba(255,23,68,0.2); border-color: var(--red); animation: shake 0.5s; }
-        @keyframes pop { 0%{transform:scale(1.2)}100%{transform:scale(1)} }
-        @keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)} }
+        .cell { aspect-ratio: 1; background: #1a1a30; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+        .cell.gem { background: rgba(0,230,118,0.15); border: 2px solid #00e676; }
+        .cell.bomb { background: rgba(255,23,68,0.2); border: 2px solid #ff1744; }
         .stats { display: flex; justify-content: space-between; margin: 12px 0; }
-        .stat { text-align: center; }
-        .stat-label { font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-label { font-size: 10px; color: #888; }
         .stat-value { font-size: 15px; font-weight: 700; }
-        .stat-value.gold { color: var(--gold); } .stat-value.green { color: var(--green); }
-        .section-label { font-size: 12px; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-        .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
-        input { padding: 12px; background: var(--cell); border: 2px solid rgba(255,255,255,0.08); border-radius: 12px; color: #fff; font-size: 15px; font-weight: 600; text-align: center; outline: none; width: 100%; transition: 0.2s; }
-        input:focus { border-color: var(--purple); }
-        input:disabled { opacity: 0.5; cursor: not-allowed; }
-        .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-        .chip { padding: 8px 14px; border: 2px solid rgba(255,255,255,0.1); border-radius: 20px; background: transparent; color: var(--sub); font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .chip.active { border-color: var(--purple); background: rgba(124,77,255,0.2); color: #fff; }
-        .chip:disabled { opacity: 0.4; cursor: not-allowed; }
-        .play-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 8px; }
-        .play-btn.start { background: linear-gradient(135deg, var(--green), #00c853); color: #000; }
-        .play-btn.cashout { background: linear-gradient(135deg, var(--gold), #ff9100); color: #000; animation: pulse 1.5s infinite; }
-        .play-btn.cashout:disabled { background: #555; color: #999; animation: none; cursor: not-allowed; }
-        @keyframes pulse { 0%,100%{box-shadow:0 4px 15px rgba(255,215,64,0.3)} 50%{box-shadow:0 4px 25px rgba(255,215,64,0.6)} }
+        .gold { color: #ffd740; } .green { color: #00e676; }
+        .section-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+        .row { display: flex; gap: 8px; margin-bottom: 12px; }
+        input { padding: 12px; background: #1a1a30; border: 2px solid #333; border-radius: 12px; color: #fff; font-size: 15px; text-align: center; width: 100%; }
+        input:disabled { opacity: 0.5; }
+        .chip-row { display: flex; gap: 6px; margin-top: 8px; }
+        .chip { padding: 8px 14px; border: 2px solid #333; border-radius: 20px; background: transparent; color: #888; font-size: 13px; cursor: pointer; }
+        .chip.active { border-color: #7c4dff; background: rgba(124,77,255,0.2); color: #fff; }
+        .chip:disabled { opacity: 0.4; }
+        .play-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+        .play-btn.start { background: #00e676; color: #000; }
+        .play-btn.cashout { background: #ffd740; color: #000; }
+        .play-btn.cashout:disabled { background: #555; color: #999; }
         .hidden { display: none !important; }
         .message { text-align: center; font-size: 17px; font-weight: 700; margin: 10px 0; min-height: 24px; }
-        .message.win { color: var(--green); } .message.lose { color: var(--red); }
-        .btn { padding: 10px 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 700; }
-        .btn-half { background: rgba(255,255,255,0.08); color: #fff; }
-        .btn-double { background: var(--purple); color: #fff; }
+        .win { color: #00e676; } .lose { color: #ff1744; }
+        .btn { padding: 10px 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 700; background: #333; color: #fff; }
+        .btn-double { background: #7c4dff; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <div class="title">💣 Mines</div>
-            <div class="balance-badge">⭐ <span id="balance">...</span></div>
+            <div class="balance">⭐ <span id="balance">...</span></div>
         </div>
         <div class="card">
             <div class="grid" id="grid"></div>
             <div class="stats">
-                <div class="stat"><div class="stat-label">Множитель</div><div class="stat-value gold" id="mult">1.00x</div></div>
-                <div class="stat"><div class="stat-label">Алмазов</div><div class="stat-value" id="opened">0</div></div>
-                <div class="stat"><div class="stat-label">Выигрыш</div><div class="stat-value green" id="win">0 ⭐</div></div>
+                <div><div class="stat-label">Множитель</div><div class="stat-value gold" id="mult">1.00x</div></div>
+                <div><div class="stat-label">Алмазов</div><div class="stat-value" id="opened">0</div></div>
+                <div><div class="stat-label">Выигрыш</div><div class="stat-value green" id="win">0 ⭐</div></div>
             </div>
             <div class="message" id="message"></div>
             <div class="section-label">💵 Сумма ставки</div>
             <div class="row">
                 <input type="number" id="bet" value="100" min="10">
-                <button class="btn btn-half" id="btnHalf" onclick="adjustBet(0.5)">½</button>
+                <button class="btn" id="btnHalf" onclick="adjustBet(0.5)">½</button>
                 <button class="btn btn-double" id="btnDouble" onclick="adjustBet(2)">2×</button>
             </div>
             <div class="section-label">💣 Количество мин</div>
@@ -90,21 +73,29 @@
         </div>
     </div>
     <script>
-        const tg = window.Telegram.WebApp;
+        var tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
         
-        const p = new URLSearchParams(location.search);
-        const urlBal = parseInt(p.get('balance'));
-        let balance = (!isNaN(urlBal) && urlBal >= 0) ? urlBal : 1000;
+        var p = new URLSearchParams(location.search);
+        var urlBal = parseInt(p.get('balance'));
+        var balance = (!isNaN(urlBal) && urlBal >= 0) ? urlBal : 1000;
         
-        let bet = 100, mines = 3;
-        let gameActive = false, canCashout = false, grid = [], revealed = [], opened = 0, multiplier = 1;
+        var bet = 100;
+        var mines = 3;
+        var gameActive = false;
+        var canCashout = false;
+        var grid = [];
+        var revealed = [];
+        var opened = 0;
+        var multiplier = 1;
         
         document.getElementById('balance').textContent = balance;
         if (bet > balance) { bet = balance; document.getElementById('bet').value = bet; }
         
-        function saveBal() { document.getElementById('balance').textContent = balance; }
+        function saveBal() {
+            document.getElementById('balance').textContent = balance;
+        }
         
         function sendResult(w) {
             tg.sendData(JSON.stringify({
@@ -115,7 +106,7 @@
             }));
         }
         
-        const mults = {
+        var mults = {
             1: [1.02,1.05,1.10,1.16,1.23,1.31,1.40,1.50,1.62,1.75,1.90,2.07,2.27,2.50,2.77,3.10,3.50,4.00,4.65,5.50,6.60,8.10,10.20,13.50],
             3: [1.08,1.20,1.36,1.55,1.79,2.08,2.44,2.90,3.48,4.23,5.22,6.55,8.40,11.00,14.80,20.50,29.50,45.00],
             5: [1.15,1.35,1.62,1.98,2.45,3.10,4.00,5.25,7.10,9.90,14.30,21.50,34.00,58.00],
@@ -137,28 +128,35 @@
             document.getElementById('minesInput').disabled = lock;
             document.getElementById('btnHalf').disabled = lock;
             document.getElementById('btnDouble').disabled = lock;
-            document.querySelectorAll('.chip').forEach(function(c) { c.disabled = lock; });
+            var chips = document.querySelectorAll('.chip');
+            for (var i = 0; i < chips.length; i++) { chips[i].disabled = lock; }
         }
 
         function setMines(n) {
             if (gameActive || n < 1 || n > 24) return;
             mines = n;
             document.getElementById('minesInput').value = n;
-            document.querySelectorAll('.chip').forEach(function(c) {
-                c.classList.toggle('active', parseInt(c.textContent) === n);
-            });
+            var chips = document.querySelectorAll('.chip');
+            for (var i = 0; i < chips.length; i++) {
+                var c = chips[i];
+                if (parseInt(c.textContent) === n) { c.classList.add('active'); }
+                else { c.classList.remove('active'); }
+            }
             initGrid(); renderGrid();
         }
 
         function adjustBet(f) {
             if (gameActive) return;
-            bet = Math.max(10, Math.min(balance, Math.floor(bet * f)));
+            bet = Math.floor(bet * f);
+            if (bet < 10) bet = 10;
+            if (bet > balance) bet = balance;
             document.getElementById('bet').value = bet;
         }
 
         function initGrid() {
-            grid = Array(25).fill(false);
-            revealed = Array(25).fill(false);
+            grid = [];
+            revealed = [];
+            for (var i = 0; i < 25; i++) { grid.push(false); revealed.push(false); }
             var placed = 0;
             while (placed < mines) {
                 var p = Math.floor(Math.random() * 25);
@@ -170,7 +168,7 @@
             var html = '';
             for (var i = 0; i < 25; i++) {
                 var cls = 'cell';
-                if (revealed[i]) cls += grid[i] ? ' bomb' : ' gem';
+                if (revealed[i]) { cls += grid[i] ? ' bomb' : ' gem'; }
                 var content = revealed[i] ? (grid[i] ? '💣' : '💎') : '';
                 html += '<div class="' + cls + '" onclick="clickCell(' + i + ')">' + content + '</div>';
             }
@@ -179,7 +177,7 @@
 
         function startGame() {
             bet = parseInt(document.getElementById('bet').value) || 100;
-            if (bet > balance) { alert('Недостаточно средств!'); return; }
+            if (bet > balance) { alert('Недостаточно!'); return; }
             balance -= bet; saveBal();
             gameActive = true; opened = 0; multiplier = 1; canCashout = false;
             lockControls(true);
@@ -188,17 +186,13 @@
             document.getElementById('cashoutBtn').classList.remove('hidden');
             document.getElementById('cashoutBtn').disabled = true;
             document.getElementById('message').textContent = '';
-            document.getElementById('message').className = 'message';
         }
 
         function clickCell(i) {
             if (!gameActive || revealed[i]) return;
             revealed[i] = true;
             
-            if (!canCashout) {
-                canCashout = true;
-                document.getElementById('cashoutBtn').disabled = false;
-            }
+            if (!canCashout) { canCashout = true; document.getElementById('cashoutBtn').disabled = false; }
             
             if (grid[i]) {
                 endGame();
