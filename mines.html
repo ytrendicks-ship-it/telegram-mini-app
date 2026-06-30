@@ -109,9 +109,45 @@
         
         function saveBal() { document.getElementById('balance').textContent = balance; }
         
-        function sendResult(w) {
-            tg.sendData(JSON.stringify({ action: "game_result", game: "mines", win: w, balance: balance, bet: bet, mines: mines }));
-        }
+       async function syncBalance() {
+    const user = tg.initDataUnsafe?.user;
+    if (!user || !user.id) return;
+    
+    try {
+        const response = await fetch(''http://localhost:8080/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: user.id,
+                balance: balance
+            })
+        });
+        const result = await response.text();
+        console.log('Sync:', result);
+    } catch(e) {
+        console.log('Sync error:', e);
+    }
+}
+
+const API_URL = 'http://localhost:8080/sync';  // Для теста на ПК
+// const API_URL = 'http://ТВОЙ_IP:8080/sync';  // Для сервера
+
+async function syncBalanceAPI() {
+    const user = tg.initDataUnsafe?.user;
+    if (!user?.id) return;
+    
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: user.id, balance: balance })
+        });
+    } catch(e) {}
+}
+
+function sendResult(w) {
+    syncBalanceAPI();  // Не закрывает Mini App!
+}
         
         const mults = {
             1:[1.02,1.05,1.10,1.16,1.23,1.31,1.40,1.50,1.62,1.75,1.90,2.07,2.27,2.50,2.77,3.10,3.50,4.00,4.65,5.50,6.60,8.10,10.20,13.50],
