@@ -195,11 +195,13 @@
             if (!canCashout) { canCashout = true; document.getElementById('cashoutBtn').disabled = false; }
             
             if (grid[i]) {
+    // Сначала отправляем результат
+    sendResult(-bet);
+    
+    // Потом завершаем
     endGame();
     document.getElementById('message').textContent = '💥 Взрыв! -' + bet + ' ⭐';
     document.getElementById('message').className = 'message lose';
-    alert('Отправка проигрыша...'); // ← ДОБАВЬ ЭТО
-    sendResult(-bet);
     return;
 }
             
@@ -207,15 +209,7 @@
             var mList = getMults(mines);
             multiplier = mList[Math.min(opened - 1, mList.length - 1)];
             
-            if (opened >= 25 - mines) {
-                var win = Math.floor(bet * multiplier);
-                balance += win; saveBal();
-                endGame();
-                document.getElementById('message').textContent = '🎉 Все алмазы! +' + win + ' ⭐';
-                document.getElementById('message').className = 'message win';
-                sendResult(win);
-                return;
-            }
+            clickCell
             
             renderGrid(); updateUI();
         }
@@ -224,11 +218,14 @@
     if (!gameActive || !canCashout) return;
     var win = Math.floor(bet * multiplier);
     balance += win; saveBal();
+    
+    // Сначала отправляем результат
+    sendResult(win);
+    
+    // Потом завершаем игру
     endGame();
     document.getElementById('message').textContent = '🎉 Выигрыш: +' + win + ' ⭐';
     document.getElementById('message').className = 'message win';
-    alert('Отправка результата...'); // ← ДОБАВЬ ЭТО
-    sendResult(win);
 }
 
         function endGame() {
